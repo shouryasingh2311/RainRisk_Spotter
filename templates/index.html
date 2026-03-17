@@ -54,8 +54,7 @@
                         linear-gradient(160deg, #0f172a 0%, #070d1a 60%, #0a0f1e 100%);
             background-attachment: fixed;
             color: var(--text);
-            display: flex;
-            flex-direction: column;
+            display: block; /* Removed flex-direction column to prevent left-side off-screen margin centering bugs */
             scroll-behavior: smooth;
         }
 
@@ -155,7 +154,6 @@
 
         /* ─── Main Layout ─────────────────────────────────────────── */
         #app-main {
-            flex: 1;
             display: flex;
             flex-wrap: wrap; /* Allows stacking on small screens */
             padding: 18px 20px;
@@ -163,6 +161,7 @@
             max-width: 1600px;
             margin: 0 auto;
             width: 100%;
+            min-height: calc(100vh - 58px);
         }
 
         /* ─── Sidebar ─────────────────────────────────────────────── */
@@ -174,13 +173,13 @@
             gap: 16px;
             position: sticky;
             top: 76px; /* Sticky scroll for sidebar */
-            height: calc(100vh - 96px);
+            max-height: calc(100vh - 96px);
             overflow-y: auto;
             padding-right: 6px;
             padding-bottom: 20px;
         }
 
-        .panel { border-radius: var(--radius); padding: 14px; }
+        .panel { border-radius: var(--radius); padding: 14px; flex-shrink: 0; }
 
         /* Weather Card */
         #weather-card { position: relative; overflow: hidden; }
