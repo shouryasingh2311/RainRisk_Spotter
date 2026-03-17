@@ -36,7 +36,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/RainRisk_Spotter.git
+git clone https://github.com/shouryasingh2311/RainRisk_Spotter.git
 cd RainRisk_Spotter
 
 # Create and activate virtual environment
