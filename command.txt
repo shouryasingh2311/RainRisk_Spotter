@@ -1,0 +1,20 @@
+cd C:\Users\Shourya Singh\Documents\RainRisk_Spotter
+.\venv\Scripts\activate.bat
+app.py
+
+
+TimeSegmentWhat to Say (The Narrative)Demo
+
+The Problem (Local Impact)"Every monsoon, Bengaluru faces major flood damage.
+ Current alerts are reactive. We need a predictive tool to tell maintenance crews exactly where to send resources before the disaster hits.
+"Show the logo/dashboard
+The Solution (The Live Demo)"We built the Bengaluru RainRisk Spotter.
+ Our system uses a Machine Learning model trained on key factors: Elevation, Drainage quality, and Rainfall to calculate a precise Flood Risk Score for any hotspot in real time."Keep the rainfall slider low (e.g., $15 \text{ mm}$).
+ Map is GREEN.
+The Key Insight (The Wow Moment)"Watch what happens when the forecast shows heavy rain (e.g., $85 \text{ mm}$).
+ Our model instantly recalculates and identifies the critical danger zones, like Silk Board Junction, which jump to High Alert (Red).
+"Move the slider to click 'ANALYZE RISK NOW'.
+ The map dynamically changes to RED/ORANGE.
+ Zoom in and click a red marker to show the Pop-up with the high risk score.
+Future Vision & Tech Stack"This system is built using Python, Scikit-learn ML, and Folium mapping. 
+In the future, we can easily integrate live weather APIs and crowd-sourced drainage data to scale this to every street corner in the city."Conclude with thanks and open for questions.

@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>RainRisk Spotter — Live Flood Intelligence Dashboard</title>
+    <meta name="description" content="Real-time flood risk intelligence for Bengaluru powered by live weather data and machine learning." />
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ─── CSS Reset & Variables ─────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --cyan: #00f0ff;
+            --cyan-dark: #0088ff;
+            --accent: #ff3366;
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --bg-900: #0f172a;
+            --bg-950: #070d1a;
+            --surface: rgba(255,255,255,0.04);
+            --surface-hover: rgba(255,255,255,0.08);
+            --border: rgba(255,255,255,0.08);
+            --border-active: rgba(0,240,255,0.4);
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --text-dim: #475569;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow-glow-cyan: 0 0 20px rgba(0,240,255,0.25);
+            --shadow-glow-red: 0 0 20px rgba(239,68,68,0.3);
+            --shadow-panel: 0 8px 32px rgba(0,0,0,0.6);
+        }
+
+        html, body { height: 100%; width: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(ellipse at 20% 0%, rgba(0,136,255,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 100%, rgba(0,240,255,0.06) 0%, transparent 50%),
+                        linear-gradient(160deg, #0f172a 0%, #070d1a 60%, #0a0f1e 100%);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ─── Scrollbar ────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+
+        /* ─── Glass Panel ─────────────────────────────────────────── */
+        .glass {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-panel);
+        }
+
+        .glass-hover {
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+        }
+        .glass-hover:hover {
+            border-color: rgba(0,240,255,0.25);
+            box-shadow: var(--shadow-panel), var(--shadow-glow-cyan);
+            transform: translateY(-1px);
+        }
+
+        /* ─── Text Gradient ───────────────────────────────────────── */
+        .text-gradient {
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ─── Header ─────────────────────────────────────────────── */
+        #app-header {
+            height: 58px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: rgba(7, 13, 26, 0.95);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+        }
+
+        .header-logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+        .logo-icon-wrap .glow-ring {
+            position: absolute; inset: -4px;
+            background: radial-gradient(circle, rgba(0,240,255,0.4), transparent 70%);
+            border-radius: 50%;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        .logo-icon { font-size: 26px; color: var(--cyan); filter: drop-shadow(0 0 8px rgba(0,240,255,0.8)); z-index: 1; }
+        .header-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+
+        .header-center { display: flex; align-items: center; gap: 12px; }
+
+        /* Alert banner */
+        #alert-banner {
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: fade-in 0.4s ease;
+            transition: all 0.3s;
+        }
+        #alert-banner.safe    { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+        #alert-banner.watch   { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+        #alert-banner.warning { background: rgba(239,100,68,0.15); border: 1px solid rgba(239,100,68,0.3); color: #fb923c; }
+        #alert-banner.emergency { background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5); color: #f87171; animation: alert-pulse 1.5s infinite; }
+
+        .header-right { display: flex; align-items: center; gap: 12px; }
+
+        #refresh-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 99px;
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        #refresh-btn:hover { border-color: var(--border-active); color: var(--cyan); }
+        #refresh-btn .spin { display: inline-block; }
+        #refresh-btn.spinning .spin { animation: spin 0.8s linear infinite; }
+
+        #last-updated {
+            font-size: 11px; color: var(--text-dim);
+            display: flex; align-items: center; gap: 4px;
+        }
+
+        /* ─── Main Layout ─────────────────────────────────────────── */
+        #app-main {
+            flex: 1;
+            display: flex;
+            padding: 14px;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        /* ─── Sidebar ─────────────────────────────────────────────── */
+        #sidebar {
+            width: 290px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .panel { border-radius: var(--radius); padding: 14px; }
+
+        /* Weather Card */
+        #weather-card { position: relative; overflow: hidden; }
+        #weather-card .weather-bg {
+            position: absolute; inset: 0; opacity: 0.06;
+            background: radial-gradient(ellipse at top right, var(--cyan), transparent 70%);
+            pointer-events: none;
+        }
+        .weather-top { display: flex; align-items: flex-start; justify-content: space-between; }
+        .weather-icon-main { font-size: 48px; color: var(--cyan); filter: drop-shadow(0 0 12px rgba(0,240,255,0.6)); }
+        .weather-temp { font-family: 'Space Grotesk', sans-serif; font-size: 36px; font-weight: 700; color: #fff; line-height: 1; }
+        .weather-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .weather-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .weather-stat { background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); padding: 8px 10px; }
+        .weather-stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .weather-stat-value { font-size: 14px; font-weight: 700; color: #fff; margin-top: 2px; }
+        .weather-stat-value span { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+
+        /* Rainfall Summary */
+        .rain-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+        .rain-pill { flex: 1; min-width: 70px; background: rgba(0,136,255,0.1); border: 1px solid rgba(0,136,255,0.2);
+                     border-radius: 10px; padding: 8px 10px; text-align: center; }
+        .rain-pill-val { font-size: 16px; font-weight: 700; color: var(--cyan); font-family: 'Space Grotesk', sans-serif; }
+        .rain-pill-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+
+        /* Section Header */
+        .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .section-header .s-icon { font-size: 16px; }
+        .section-header h2 { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #fff; }
+
+        /* Simulator Panel */
+        #sim-panel form { display: flex; flex-direction: column; gap: 10px; }
+        .input-group label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; display: block; margin-bottom: 4px; }
+        .input-wrap { position: relative; }
+        .input-wrap input {
+            width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 10px 40px 10px 12px;
+            color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700;
+            outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-wrap input:focus { border-color: var(--border-active); box-shadow: 0 0 0 3px rgba(0,240,255,0.08); }
+        .input-unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text-dim); pointer-events: none; }
+
+        /* Mode toggle */
+        .mode-toggle { display: flex; gap: 6px; }
+        .mode-btn {
+            flex: 1; padding: 8px 4px; border-radius: 8px; font-size: 11px; font-weight: 600;
+            border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+        .mode-btn.active { background: rgba(0,240,255,0.12); border-color: rgba(0,240,255,0.4); color: var(--cyan); }
+        .mode-btn:hover:not(.active) { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+        .submit-btn {
+            width: 100%; padding: 12px;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dark) 100%);
+            color: #0a0f1e; font-weight: 800; font-size: 13px; letter-spacing: 0.5px;
+            border: none; border-radius: var(--radius-sm); cursor: pointer;
+            transition: all 0.2s; font-family: 'Space Grotesk', sans-serif;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .submit-btn:hover { box-shadow: 0 0 24px rgba(0,240,255,0.4); transform: translateY(-1px); }
+        .submit-btn:active { transform: translateY(0); }
+
+        /* Stats row */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .stat-card { border-radius: var(--radius-sm); padding: 10px; text-align: center; border: 1px solid var(--border); }
+        .stat-card.red   { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.2); }
+        .stat-card.amber { background: rgba(245,158,11,0.08);  border-color: rgba(245,158,11,0.2); }
+        .stat-card.green { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); }
+        .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.1; }
+        .stat-card.red   .stat-num { color: #f87171; }
+        .stat-card.amber .stat-num { color: #fbbf24; }
+        .stat-card.green .stat-num { color: #34d399; }
+        .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+        /* Drainage status */
+        .drainage-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 700;
+        }
+        .drainage-badge.Optimal  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+        .drainage-badge.Warning  { background: rgba(245,158,11,0.15);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+        .drainage-badge.Critical { background: rgba(239,68,68,0.15);   color: #f87171; border: 1px solid rgba(239,68,68,0.3); animation: alert-pulse 1.5s infinite; }
+
+        /* Alerts list */
+        #alerts-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; max-height: 260px; }
+        #alerts-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .alert-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 10px; background: rgba(255,255,255,0.03);
+            border-radius: 8px; border-left: 2px solid;
+            transition: background 0.2s;
+        }
+        .alert-item:hover { background: rgba(255,255,255,0.06); }
+        .alert-item.high   { border-color: var(--red); }
+        .alert-item.medium { border-color: var(--amber); }
+        .alert-name { font-size: 12px; font-weight: 600; color: #fff; }
+        .alert-sub  { font-size: 10px; color: var(--text-muted); }
+        .alert-pct {
+            font-size: 11px; font-weight: 700; padding: 2px 6px;
+            border-radius: 6px; white-space: nowrap;
+        }
+        .alert-item.high   .alert-pct { background: rgba(239,68,68,0.2);  color: #f87171; }
+        .alert-item.medium .alert-pct { background: rgba(245,158,11,0.2); color: #fbbf24; }
+
+        /* ─── Forecast Strip ──────────────────────────────────────── */
+        #forecast-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+        #forecast-strip::-webkit-scrollbar { height: 3px; }
+        .forecast-day {
+            flex-shrink: 0; min-width: 64px;
+            background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 8px; text-align: center;
+            transition: border-color 0.2s;
+        }
+        .forecast-day:hover { border-color: rgba(0,240,255,0.3); }
+        .forecast-day-name { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+        .forecast-day-icon { font-size: 22px; color: var(--cyan); margin: 4px 0; }
+        .forecast-day-rain { font-size: 12px; font-weight: 700; color: #60a5fa; }
+        .forecast-day-temp { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+        /* ─── Chart ─────────────────────────────────────────────── */
+        #chart-wrapper { position: relative; height: 140px; }
+
+        /* ─── Map Section ─────────────────────────────────────────── */
+        #map-section {
+            flex: 1;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border);
+            background: var(--bg-950);
+        }
+
+        .map-inner { width: 100%; height: 100%; }
+        .map-inner iframe, .map-inner > div { width: 100% !important; height: 100% !important; }
+
+        /* Folium map override */
+        .map-inner .folium-map { width: 100% !important; height: 100% !important; }
+
+        .map-placeholder {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--text-dim);
+        }
+        .grid-bg {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Live badge */
+        .live-badge {
+            position: absolute; top: 14px; right: 14px; z-index: 1000;
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(7,13,26,0.9); border: 1px solid rgba(16,185,129,0.4);
+            border-radius: 99px; padding: 5px 12px; font-size: 11px; font-weight: 700; color: #34d399;
+            backdrop-filter: blur(8px);
+        }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: pulse-dot 1.5s infinite; }
+
+        /* City risk score */
+        .city-risk-badge {
+            position: absolute; top: 14px; left: 14px; z-index: 1000;
+            background: rgba(7,13,26,0.9); border: 1px solid var(--border);
+            border-radius: 12px; padding: 10px 14px;
+            backdrop-filter: blur(8px);
+        }
+        .city-risk-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .city-risk-num { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 800; }
+        .city-risk-num.low    { color: #34d399; }
+        .city-risk-num.medium { color: #fbbf24; }
+        .city-risk-num.high   { color: #f87171; }
+        .city-risk-sub { font-size: 10px; color: var(--text-muted); }
+
+        .drainage-penalty-note {
+            position: absolute; bottom: 14px; left: 14px; z-index: 1000;
+            background: rgba(7,13,26,0.85); border: 1px solid rgba(245,158,11,0.3);
+            border-radius: 8px; padding: 6px 12px;
+            font-size: 11px; color: #fbbf24; backdrop-filter: blur(8px);
+            display: {{ 'flex' if weather and weather.drainage_penalty and weather.drainage_penalty > 0 else 'none' }};
+            align-items: center; gap: 6px;
+        }
+
+        /* ─── Animations ──────────────────────────────────────────── */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50%       { opacity: 0.7; transform: scale(1.2); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes alert-pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.6; }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50%       { transform: scale(1.5); opacity: 0.5; }
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateX(8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .fade-in  { animation: fade-in 0.4s ease forwards; }
+        .slide-in { animation: slide-in 0.4s ease forwards; }
+
+        /* ─── Auto-refresh countdown ─────────────────────────────── */
+        #countdown { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+
+<body>
+    <!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
+    <header id="app-header">
+        <div class="header-logo">
+            <div class="logo-icon-wrap">
+                <div class="glow-ring"></div>
+                <span class="material-symbols-outlined logo-icon">water_drop</span>
+            </div>
+            <span class="header-title text-gradient">RainRisk Spotter</span>
+            <span style="font-size:10px;color:var(--text-dim);margin-left:4px;padding:3px 8px;border:1px solid var(--border);border-radius:99px">BENGALURU</span>
+        </div>
+
+        <div class="header-center">
+            <div id="alert-banner" class="{{ weather.alert_level if weather else 'safe' }}">
+                <span class="material-symbols-outlined" style="font-size:14px">
+                    {% if weather and weather.alert_level == 'emergency' %}emergency{% elif weather and weather.alert_level == 'warning' %}warning{% elif weather and weather.alert_level == 'watch' %}visibility{% else %}check_circle{% endif %}
+                </span>
+                <span id="alert-text">{{ weather.alert_message if weather else '✅ Loading weather data...' }}</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button id="refresh-btn" onclick="refreshWeather()">
+                <span class="material-symbols-outlined spin" style="font-size:14px">refresh</span>
+                Refresh
+            </button>
+            <div id="last-updated">
+                <span class="material-symbols-outlined" style="font-size:12px;color:var(--text-dim)">schedule</span>
+                <span id="update-time">{{ weather.fetched_at if weather else '—' }}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px">
+                <span>Auto-refresh in</span>
+                <span id="countdown" style="color:var(--cyan);font-weight:700;min-width:28px">15:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ MAIN ════════════════════════════════════════════════════════ -->
+    <main id="app-main">
+
+        <!-- ─── SIDEBAR ─── -->
+        <aside id="sidebar">
+
+            <!-- 1. Live Weather Card -->
+            <div class="glass panel glass-hover" id="weather-card">
+                <div class="weather-bg"></div>
+                <div class="section-header">
+                    <span class="material-symbols-outlined s-icon" style="color:var(--cyan)">partly_cloudy_day</span>
+                    <h2>Live Weather</h2>
+                    {% if weather and weather.success %}
+                    <span style="font-size:9px;color:#34d399;margin-left:auto;background:rgba(16,185,129,0.1);padding:2px 8px;border-radius:99px;border:1px solid rgba(16,185,129,0.3)">● LIVE</span>
+                    {% else %}
+                    <span style="font-size:9px;color:#fbbf24;margin-left:auto;background:rgba(245,158,11,0.1);padding:2px 8px;border-radius:99px;border:1px solid rgba(245,158,11,0.3)">⚠ OFFLINE</span>
+                    {% endif %}
+                </div>
+
+                <div class="weather-top">
+                    <div>
+                        <div class="weather-temp" id="weather-temp">{{ weather.temperature if weather else '—' }}°<span style="font-size:18px;color:var(--text-muted)">C</span></div>
+                        <div class="weather-desc" id="weather-desc">{{ weather.weather_desc if weather else 'Fetching...' }}</div>
+                        <div style="font-size:10px;color:var(--text-dim);margin-top:2px">Feels like {{ weather.feels_like if weather else '—' }}°C</div>
+                    </div>
+                    <span class="material-symbols-outlined weather-icon-main" id="weather-icon" style="FILL:1">{{ weather.weather_icon if weather else 'cloud' }}</span>
+                </div>
+
+                <div class="weather-stats">
+                    <div class="weather-stat">
+                        <div class="weather-stat-label">💧 Humidity</div>
+                        <div class="weather-stat-value" id="w-humidity">{{ weather.humidity if weather else '—' }}<span>%</span></div>
+                    </div>
+                    <div class="weather-stat">
+                        <div class="weather-stat-label">💨 Wind</div>
+                        <div class="weather-stat-value" id="w-wind">{{ weather.wind_speed if weather else '—' }}<span> km/h</span></div>
+                    </div>
+                    <div class="weather-stat">
+                        <div class="weather-stat-label">🌡 Pressure</div>
+                        <div class="weather-stat-value" id="w-pressure">{{ weather.pressure if weather else '—' }}<span> hPa</span></div>
+                    </div>
+                    <div class="weather-stat" style="background:rgba(0,136,255,0.1);border:1px solid rgba(0,136,255,0.2)">
+                        <div class="weather-stat-label">🔧 Drain Penalty</div>
+                        <div class="weather-stat-value" id="w-drain-penalty" style="color:{% if weather and weather.drainage_penalty > 2 %}#f87171{% elif weather and weather.drainage_penalty > 0.5 %}#fbbf24{% else %}#34d399{% endif %}">
+                            -{{ weather.drainage_penalty if weather else '0' }}<span>/10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rain summary pills -->
+                <div class="rain-pills" style="margin-top:10px">
+                    <div class="rain-pill">
+                        <div class="rain-pill-val" id="rain-now">{{ weather.rain_current if weather else '0' }}</div>
+                        <div class="rain-pill-label">Now (mm)</div>
+                    </div>
+                    <div class="rain-pill">
+                        <div class="rain-pill-val" id="rain-3h">{{ weather.rain_3h if weather else '0' }}</div>
+                        <div class="rain-pill-label">3h (mm)</div>
+                    </div>
+                    <div class="rain-pill">
+                        <div class="rain-pill-val" id="rain-24h">{{ weather.rain_24h if weather else '0' }}</div>
+                        <div class="rain-pill-label">24h (mm)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Simulation Panel -->
+            <div class="glass panel" id="sim-panel">
+                <div class="section-header">
+                    <span class="material-symbols-outlined s-icon" style="color:#a78bfa">analytics</span>
+                    <h2>Prediction Engine</h2>
+                </div>
+
+                <form method="POST" action="/">
+                    <div class="mode-toggle">
+                        <button type="button" class="mode-btn {{ 'active' if mode == 'live' else '' }}" id="mode-live-btn" onclick="setMode('live')">
+                            <span class="material-symbols-outlined" style="font-size:13px">sensors</span> Live
+                        </button>
+                        <button type="button" class="mode-btn {{ 'active' if mode == 'simulator' else '' }}" id="mode-sim-btn" onclick="setMode('simulator')">
+                            <span class="material-symbols-outlined" style="font-size:13px">science</span> What-If
+                        </button>
+                    </div>
+                    <input type="hidden" name="mode" id="mode-input" value="{{ mode }}" />
+
+                    <div class="input-group">
+                        <label>Rainfall Intensity</label>
+                        <div class="input-wrap">
+                            <input type="number" name="rainfall_input" id="rainfall-input"
+                                step="0.1" min="0" max="300"
+                                value="{{ current_rainfall }}"
+                                {% if mode == 'live' %}readonly{% endif %}
+                                required />
+                            <span class="input-unit">mm</span>
+                        </div>
+                    </div>
+
+                    <div id="live-note" style="font-size:10px;color:var(--text-dim);display:{{ 'flex' if mode == 'live' else 'none' }};align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:12px;color:#34d399">info</span>
+                        Using live 24h rainfall from Open-Meteo
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="material-symbols-outlined" style="font-size:16px">radar</span>
+                        Predict Flood Risk
+                    </button>
+                </form>
+            </div>
+
+            <!-- 3. Stats Row -->
+            <div class="glass panel">
+                <div class="section-header">
+                    <span class="material-symbols-outlined s-icon" style="color:#fbbf24">bar_chart</span>
+                    <h2>Zone Overview</h2>
+                    <span style="font-size:10px;color:var(--text-muted);margin-left:auto">{{ stats.total_zones }} zones</span>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-card red">
+                        <div class="stat-num">{{ stats.total_high_alerts }}</div>
+                        <div class="stat-label">High Risk</div>
+                    </div>
+                    <div class="stat-card amber">
+                        <div class="stat-num">{{ stats.total_medium_alerts }}</div>
+                        <div class="stat-label">Medium</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-num">{{ stats.total_low_alerts }}</div>
+                        <div class="stat-label">Safe</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+                    <span style="font-size:10px;color:var(--text-muted)">Drainage System</span>
+                    <span class="drainage-badge {{ stats.drainage_status }}">
+                        <span class="material-symbols-outlined" style="font-size:12px">water</span>
+                        {{ stats.drainage_status }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- 4. High Alert Zones -->
+            <div class="glass panel" id="alerts-panel">
+                <div class="section-header">
+                    <span class="material-symbols-outlined s-icon" style="color:#f87171">crisis_alert</span>
+                    <h2>Active Alerts</h2>
+                    {% if stats.total_high_alerts > 0 %}
+                    <span style="font-size:9px;color:#f87171;margin-left:auto;background:rgba(239,68,68,0.12);padding:2px 8px;border-radius:99px;border:1px solid rgba(239,68,68,0.3)">{{ stats.total_high_alerts }} HIGH</span>
+                    {% endif %}
+                </div>
+                <div id="alerts-list">
+                    {% if alerts %}
+                        {% for alert in alerts.get('high', []) %}
+                        <div class="alert-item high slide-in">
+                            <div>
+                                <div class="alert-name">{{ alert.name }}</div>
+                                <div class="alert-sub">🚰 Drain: {{ '%.1f'|format(alert.drainage) }}/10 &nbsp;⛰ {{ '%.0f'|format(alert.elevation) }}m</div>
+                            </div>
+                            <div class="alert-pct">{{ '%.0f'|format(alert.risk) }}%</div>
+                        </div>
+                        {% endfor %}
+                        {% for alert in alerts.get('medium', []) %}
+                        <div class="alert-item medium slide-in">
+                            <div>
+                                <div class="alert-name">{{ alert.name }}</div>
+                                <div class="alert-sub">🚰 Drain: {{ '%.1f'|format(alert.drainage) }}/10</div>
+                            </div>
+                            <div class="alert-pct">{{ '%.0f'|format(alert.risk) }}%</div>
+                        </div>
+                        {% endfor %}
+                        {% if not alerts.get('high') and not alerts.get('medium') %}
+                        <p style="font-size:12px;color:var(--text-dim);text-align:center;margin-top:12px">✅ All zones within safe parameters</p>
+                        {% endif %}
+                    {% else %}
+                    <p style="font-size:12px;color:var(--text-dim);text-align:center;margin-top:12px">Run a prediction to see zone alerts</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ─── MAP + RIGHT PANEL ─── -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:14px;overflow:hidden;min-width:0">
+
+            <!-- Map -->
+            <section id="map-section" style="flex:1;min-height:0">
+                {% if map_html %}
+                <!-- City Risk Overlay -->
+                {% if stats.city_risk_score is defined %}
+                <div class="city-risk-badge">
+                    <div class="city-risk-label">City Risk Index</div>
+                    <div class="city-risk-num {% if stats.city_risk_score > 5 %}high{% elif stats.city_risk_score > 2 %}medium{% else %}low{% endif %}">
+                        {{ stats.city_risk_score }}<span style="font-size:14px;color:var(--text-muted)">/10</span>
+                    </div>
+                    <div class="city-risk-sub">Bengaluru Overall</div>
+                </div>
+                {% endif %}
+
+                <!-- Live badge -->
+                <div class="live-badge">
+                    <div class="live-dot"></div>
+                    Live Data
+                </div>
+
+                {% if weather and weather.drainage_penalty and weather.drainage_penalty > 0 %}
+                <div class="drainage-penalty-note" style="display:flex">
+                    <span class="material-symbols-outlined" style="font-size:14px">warning</span>
+                    Drainage reduced by {{ weather.drainage_penalty }} due to live rain accumulation
+                </div>
+                {% endif %}
+
+                <div class="map-inner">{{ map_html|safe }}</div>
+
+                {% else %}
+                <div class="grid-bg"></div>
+                <div class="map-placeholder">
+                    <span class="material-symbols-outlined" style="font-size:64px;opacity:0.3;margin-bottom:12px">map</span>
+                    <p style="font-family:'Space Grotesk',sans-serif;text-transform:uppercase;letter-spacing:2px;font-size:12px;font-weight:700">Flood Risk Map</p>
+                    <p style="font-size:11px;color:var(--text-dim);margin-top:6px">Click "Predict Flood Risk" to generate the live heatmap</p>
+                </div>
+                {% endif %}
+            </section>
+
+            <!-- 7-Day Forecast + Rainfall Chart -->
+            <div style="display:flex;gap:14px;flex-shrink:0">
+
+                <!-- 7-Day Forecast -->
+                <div class="glass panel" style="flex:1;min-width:0">
+                    <div class="section-header">
+                        <span class="material-symbols-outlined s-icon" style="color:#60a5fa">calendar_month</span>
+                        <h2>7-Day Forecast</h2>
+                    </div>
+                    <div id="forecast-strip">
+                        {% if weather and weather.forecast %}
+                            {% for day in weather.forecast %}
+                            <div class="forecast-day">
+                                <div class="forecast-day-name">{{ day.date.split(',')[0] }}</div>
+                                <span class="material-symbols-outlined forecast-day-icon" style="FILL:1">{{ day.icon }}</span>
+                                <div class="forecast-day-rain">{{ day.rain_mm }}mm</div>
+                                <div class="forecast-day-temp">{{ day.temp_max }}° / {{ day.temp_min }}°</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="font-size:12px;color:var(--text-dim)">Forecast unavailable</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Rainfall Chart -->
+                <div class="glass panel" style="width:340px;flex-shrink:0">
+                    <div class="section-header">
+                        <span class="material-symbols-outlined s-icon" style="color:#c084fc">show_chart</span>
+                        <h2>Rainfall Trend (7 Days)</h2>
+                    </div>
+                    <div id="chart-wrapper">
+                        <canvas id="rain-chart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ─── SCRIPTS ─── -->
+    <script>
+        // ── Chart Setup ──────────────────────────────────────────────────
+        const chartLabels = {{ weather.chart_labels | tojson if weather and weather.chart_labels else '[]' }};
+        const chartRain   = {{ weather.chart_rain   | tojson if weather and weather.chart_rain   else '[]' }};
+        const chartHumidity = {{ weather.chart_humidity | tojson if weather and weather.chart_humidity else '[]' }};
+
+        const ctx = document.getElementById('rain-chart').getContext('2d');
+        const rainChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: 'Rain (mm)',
+                        data: chartRain,
+                        borderColor: '#00f0ff',
+                        backgroundColor: 'rgba(0,240,255,0.08)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Humidity (%)',
+                        data: chartHumidity,
+                        borderColor: '#a78bfa',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 600 },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        labels: { color: '#64748b', font: { size: 10 }, boxWidth: 20, padding: 10 }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(7,13,26,0.95)',
+                        titleColor: '#94a3b8',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                    }
+                },
+                scales: {
+                    x: {
+                        display: false,
+                    },
+                    y: {
+                        position: 'left',
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 4 },
+                        title: { display: false },
+                    },
+                    y1: {
+                        position: 'right',
+                        min: 0, max: 100,
+                        grid: { display: false },
+                        ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 3 },
+                    }
+                }
+            }
+        });
+
+        // ── Mode Toggle ──────────────────────────────────────────────────
+        const liveRain = {{ weather.rain_24h if weather and weather.rain_24h is not none else 0 }};
+
+        function setMode(m) {
+            document.getElementById('mode-input').value = m;
+            const input = document.getElementById('rainfall-input');
+            const liveNote = document.getElementById('live-note');
+            const liveBtn = document.getElementById('mode-live-btn');
+            const simBtn  = document.getElementById('mode-sim-btn');
+
+            if (m === 'live') {
+                input.value = liveRain;
+                input.setAttribute('readonly', true);
+                liveNote.style.display = 'flex';
+                liveBtn.classList.add('active');
+                simBtn.classList.remove('active');
+            } else {
+                input.removeAttribute('readonly');
+                liveNote.style.display = 'none';
+                simBtn.classList.add('active');
+                liveBtn.classList.remove('active');
+            }
+        }
+
+        // ── Refresh Weather ──────────────────────────────────────────────
+        async function refreshWeather() {
+            const btn = document.getElementById('refresh-btn');
+            btn.classList.add('spinning');
+
+            try {
+                const res  = await fetch('/api/weather?refresh=true');
+                const data = await res.json();
+
+                if (data.success) {
+                    // Update weather display
+                    document.getElementById('weather-temp').innerHTML = `${data.temperature}°<span style="font-size:18px;color:var(--text-muted)">C</span>`;
+                    document.getElementById('weather-desc').textContent = data.weather_desc;
+                    document.getElementById('weather-icon').textContent = data.weather_icon;
+                    document.getElementById('w-humidity').innerHTML = `${data.humidity}<span>%</span>`;
+                    document.getElementById('w-wind').innerHTML = `${data.wind_speed}<span> km/h</span>`;
+                    document.getElementById('w-pressure').innerHTML = `${data.pressure}<span> hPa</span>`;
+                    document.getElementById('w-drain-penalty').innerHTML = `-${data.drainage_penalty}<span>/10</span>`;
+                    document.getElementById('rain-now').textContent = data.rain_current;
+                    document.getElementById('rain-3h').textContent = data.rain_3h;
+                    document.getElementById('rain-24h').textContent = data.rain_24h;
+                    document.getElementById('update-time').textContent = data.fetched_at;
+
+                    // Update alert banner
+                    const banner = document.getElementById('alert-banner');
+                    banner.className = data.alert_level;
+                    document.getElementById('alert-text').textContent = data.alert_message;
+
+                    // Update chart
+                    if (data.chart_labels && data.chart_labels.length > 0) {
+                        rainChart.data.labels = data.chart_labels;
+                        rainChart.data.datasets[0].data = data.chart_rain;
+                        rainChart.data.datasets[1].data = data.chart_humidity;
+                        rainChart.update('active');
+                    }
+
+                    // Update live rain
+                    if (document.getElementById('mode-input').value === 'live') {
+                        document.getElementById('rainfall-input').value = data.rain_24h;
+                    }
+                }
+            } catch(e) {
+                console.error('Refresh failed:', e);
+            } finally {
+                btn.classList.remove('spinning');
+                resetCountdown();
+            }
+        }
+
+        // ── Auto-Refresh Countdown ────────────────────────────────────
+        let secondsLeft = 900; // 15 minutes
+
+        function resetCountdown() { secondsLeft = 900; }
+
+        function tick() {
+            secondsLeft--;
+            if (secondsLeft <= 0) {
+                refreshWeather();
+                return;
+            }
+            const m = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+            const s = (secondsLeft % 60).toString().padStart(2, '0');
+            document.getElementById('countdown').textContent = `${m}:${s}`;
+        }
+
+        setInterval(tick, 1000);
+
+        // ── Fix Folium map iframe sizing ─────────────────────────────
+        window.addEventListener('load', function() {
+            const frames = document.querySelectorAll('#map-section iframe');
+            frames.forEach(f => {
+                f.style.width = '100%';
+                f.style.height = '100%';
+                f.style.border = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
