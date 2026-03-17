@@ -54,9 +54,10 @@
         }
 
         /* ─── Scrollbar ────────────────────────────────────────────── */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,240,255,0.4); }
 
         /* ─── Glass Panel ─────────────────────────────────────────── */
         .glass {
@@ -163,6 +164,9 @@
             flex-direction: column;
             gap: 12px;
             overflow-y: auto;
+            padding-right: 4px;
+            height: 100%;
+            padding-bottom: 20px;
         }
 
         .panel { border-radius: var(--radius); padding: 14px; }
@@ -331,7 +335,7 @@
 
         /* City risk score */
         .city-risk-badge {
-            position: absolute; top: 14px; left: 14px; z-index: 1000;
+            position: absolute; top: 14px; left: 64px; z-index: 1000;
             background: rgba(7,13,26,0.9); border: 1px solid var(--border);
             border-radius: 12px; padding: 10px 14px;
             backdrop-filter: blur(8px);
