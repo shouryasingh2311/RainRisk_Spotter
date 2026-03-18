@@ -400,6 +400,23 @@
 
         /* ─── Auto-refresh countdown ─────────────────────────────── */
         #countdown { font-variant-numeric: tabular-nums; }
+
+        /* ─── Mobile View Optimizations ──────────────────────────── */
+        @media (max-width: 768px) {
+            #app-header { height: auto; padding: 12px 20px; flex-wrap: wrap; gap: 10px; justify-content: center; flex-direction: column; }
+            .header-logo { width: 100%; justify-content: center; }
+            .header-center { width: 100%; justify-content: center; text-align: center; order: 3; }
+            .header-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+            #sidebar { width: 100%; position: static; max-height: none; overflow-y: visible; padding-right: 0; }
+            #map-section { min-height: 400px; height: 50vh; }
+            .bottom-panels { flex-direction: column; }
+            .forecast-panel, .chart-panel { width: 100%; min-width: 0; max-width: none; }
+            #alerts-panel { max-height: none; }
+            .stats-row { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+            .stat-card { padding: 6px; }
+            .stat-num { font-size: 18px; }
+            .weather-stats { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 
@@ -491,18 +508,18 @@
 
                 <!-- Rain summary pills -->
                 <div class="rain-pills" style="margin-top:10px">
-                    <div class="rain-pill">
+                    <a href="https://zoom.earth/maps/precipitation/" target="_blank" style="text-decoration:none; color:inherit;" class="rain-pill glass-hover">
                         <div class="rain-pill-val" id="rain-now">{{ weather.rain_current if weather else '0' }}</div>
                         <div class="rain-pill-label">Now (mm)</div>
-                    </div>
-                    <div class="rain-pill">
+                    </a>
+                    <a href="https://zoom.earth/maps/precipitation/" target="_blank" style="text-decoration:none; color:inherit;" class="rain-pill glass-hover">
                         <div class="rain-pill-val" id="rain-3h">{{ weather.rain_3h if weather else '0' }}</div>
                         <div class="rain-pill-label">3h (mm)</div>
-                    </div>
-                    <div class="rain-pill">
+                    </a>
+                    <a href="https://zoom.earth/maps/precipitation/" target="_blank" style="text-decoration:none; color:inherit;" class="rain-pill glass-hover">
                         <div class="rain-pill-val" id="rain-24h">{{ weather.rain_24h if weather else '0' }}</div>
                         <div class="rain-pill-label">24h (mm)</div>
-                    </div>
+                    </a>
                 </div>
             </div>
 
@@ -698,6 +715,12 @@
 
             </div>
         </div>
+
+        <!-- ─── FOOTER ─── -->
+        <footer style="width:100%; text-align:center; padding: 24px 0; margin-top: auto; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim);">
+            <p>RainRisk Spotter</p>
+            <p style="margin-top: 6px;">Contact me: <a href="mailto:shouryasingh2311@gmail.com" style="color:var(--cyan); text-decoration:none; font-weight: 600;">shouryasingh2311@gmail.com</a></p>
+        </footer>
 
     </main>
 
