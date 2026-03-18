@@ -401,6 +401,51 @@
         /* ─── Auto-refresh countdown ─────────────────────────────── */
         #countdown { font-variant-numeric: tabular-nums; }
 
+        /* ─── Map Fullscreen Modal Styles ────────────────────────── */
+        .mobile-map-overlay {
+            display: none; position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(7,13,26,1) 0%, rgba(7,13,26,0) 50%);
+            z-index: 1001; align-items: flex-end; justify-content: center; padding-bottom: 20px;
+        }
+        .btn-view-full {
+            pointer-events: auto; padding: 12px 24px; background: rgba(0,240,255,0.15);
+            color: var(--cyan); border: 1px solid var(--cyan); border-radius: 99px; font-weight: 700;
+            font-size: 13px; font-family: 'Space Grotesk', sans-serif; cursor: pointer;
+            backdrop-filter: blur(8px); display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,240,255,0.2); transition: all 0.2s;
+        }
+        .btn-view-full:hover { background: var(--cyan); color: #000; transform: translateY(-2px); }
+
+        #map-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 9998;
+        }
+        #map-backdrop.active { display: block; animation: fade-in 0.3s ease; }
+
+        #map-section.fullscreen-map {
+            position: fixed; top: 20px; left: 20px; right: 20px; bottom: 20px;
+            width: auto; height: auto !important; min-height: 0; z-index: 9999;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid var(--border-active);
+            animation: scale-up 0.3s ease; border-radius: 20px;
+        }
+        #map-section.fullscreen-map .map-inner iframe { pointer-events: auto !important; }
+        #map-section.fullscreen-map .mobile-map-overlay { display: none !important; }
+        #map-section.fullscreen-map .live-badge { right: 64px; }
+        
+        .close-map-btn {
+            display: none; position: absolute; top: 14px; right: 14px; z-index: 10000;
+            background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5);
+            color: #f87171; border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
+            backdrop-filter: blur(8px); transition: all 0.2s;
+        }
+        .close-map-btn:hover { background: rgba(239,68,68,0.8); color: #fff; }
+        #map-section.fullscreen-map .close-map-btn { display: flex; align-items: center; justify-content: center; }
+
+        @keyframes scale-up {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
         /* ─── Mobile View Optimizations ──────────────────────────── */
         @media (max-width: 768px) {
             #app-header { height: auto; padding: 12px 20px; flex-wrap: wrap; gap: 10px; justify-content: center; flex-direction: column; }
@@ -410,10 +455,15 @@
             #sidebar { width: 100%; position: static; max-height: none; overflow-y: visible; padding-right: 0; }
             #app-main { flex-direction: column; flex-wrap: nowrap; padding: 10px; }
             .right-content { width: 100%; flex: none !important; }
-            #map-section { min-height: 400px; height: 350px; }
+            
+            /* The map becomes a non-scrollable thumbnail on mobile */
+            #map-section { min-height: 250px; height: 250px; }
+            .map-inner iframe { pointer-events: none !important; }
+            .mobile-map-overlay { display: flex !important; }
+            
             .bottom-panels { flex-direction: column; }
             .forecast-panel, .chart-panel { width: 100%; min-width: 0; max-width: none; }
-            #alerts-panel { max-height: none; }
+            #alerts-panel { max-height: none; margin-bottom: 20px; }
             .stats-row { grid-template-columns: repeat(3, 1fr); gap: 4px; }
             .stat-card { padding: 6px; }
             .stat-num { font-size: 18px; }
@@ -460,6 +510,7 @@
     </header>
 
     <!-- ═══ MAIN ════════════════════════════════════════════════════════ -->
+    <div id="map-backdrop" onclick="closeMapFullscreen()"></div>
     <main id="app-main">
 
         <!-- ─── SIDEBAR ─── -->
@@ -643,6 +694,17 @@
             <!-- Map -->
             <section id="map-section" style="flex:1;min-height:0">
                 {% if map_html %}
+                <!-- Fullscreen Overlay Triggers -->
+                <div class="mobile-map-overlay">
+                    <button type="button" class="btn-view-full" onclick="openMapFullscreen()">
+                        <span class="material-symbols-outlined" style="font-size:18px">open_in_full</span>
+                        View Full Interactive Map
+                    </button>
+                </div>
+                <button type="button" class="close-map-btn" onclick="closeMapFullscreen()">
+                    <span class="material-symbols-outlined" style="font-size:20px">close</span>
+                </button>
+
                 <!-- City Risk Overlay -->
                 {% if stats.city_risk_score is defined %}
                 <div class="city-risk-badge">
@@ -801,6 +863,18 @@
                 }
             }
         });
+
+        // ── Map Fullscreen Modal ─────────────────────────────────────────
+        function openMapFullscreen() {
+            document.getElementById('map-backdrop').classList.add('active');
+            document.getElementById('map-section').classList.add('fullscreen-map');
+            document.body.style.overflow = 'hidden'; // prevent bg scroll
+        }
+        function closeMapFullscreen() {
+            document.getElementById('map-backdrop').classList.remove('active');
+            document.getElementById('map-section').classList.remove('fullscreen-map');
+            document.body.style.overflow = '';
+        }
 
         // ── Mode Toggle ──────────────────────────────────────────────────
         const liveRain = {{ weather.rain_24h if weather and weather.rain_24h is not none else 0 }};
