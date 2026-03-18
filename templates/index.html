@@ -454,10 +454,10 @@
             .header-right { width: 100%; justify-content: center; flex-wrap: wrap; }
             #sidebar { width: 100%; position: static; max-height: none; overflow-y: visible; padding-right: 0; }
             #app-main { flex-direction: column; flex-wrap: nowrap; padding: 10px; }
-            .right-content { width: 100%; flex: none !important; }
+            .right-content { width: 100%; flex: none !important; min-height: auto !important; }
             
             /* The map becomes a non-scrollable thumbnail on mobile */
-            #map-section { min-height: 250px; height: 250px; }
+            #map-section { min-height: 300px !important; height: 300px !important; flex: none !important; border-radius: 14px; }
             .map-inner iframe { pointer-events: none !important; }
             .mobile-map-overlay { display: flex !important; }
             
