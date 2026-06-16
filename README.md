@@ -2,6 +2,10 @@
 
 **Real-time flood risk intelligence dashboard for Bengaluru, powered by live weather data and machine learning.**
 
+<div align="center">
+  <img src="rainrisk.png" alt="RainRisk Spotter Dashboard" width="800px" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-bottom: 20px;" />
+</div>
+
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-green.svg)](https://flask.palletsprojects.com)
 [![Open-Meteo](https://img.shields.io/badge/Weather-Open--Meteo-cyan.svg)](https://open-meteo.com)
